@@ -1,0 +1,83 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+
+#数据生成器
+def generate_data(num_samples):
+    data = torch.randn(num_samples, 5)  # 正态分布随机数
+    labels = torch.argmax(data, dim=1)  # 取最大值所在维度作为类别
+    return data, labels
+
+
+#神经网络模型
+class VectorClassifier(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc = nn.Linear(5, 5)  # 五维输入，五维输出（对应5个类别）
+
+    def forward(self, x):
+        return self.fc(x)  # 输出原始分数（无需激活函数）
+
+
+#训练和评估函数
+def train_and_evaluate():
+    # 准备数据
+    X_train, y_train = generate_data(8000)  # 训练集
+    X_test, y_test = generate_data(2000)  # 测试集
+
+    # 初始化模型和优化器
+    model = VectorClassifier()
+    criterion = nn.CrossEntropyLoss()  # 交叉熵损失（内置Softmax）
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
+
+    # 训练循环
+    print()
+    for epoch in range(20):
+        # 前向传播
+        outputs = model(X_train)
+        loss = criterion(outputs, y_train)
+
+        # 反向传播
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        # 每5轮打印进度
+        if epoch % 5 == 0:
+            with torch.no_grad():
+                preds = model(X_test).argmax(dim=1)
+                acc = (preds == y_test).float().mean()
+            print(f"Epoch {epoch:2d} | Loss: {loss.item():.4f} | Acc: {acc:.1%}")
+
+    # 最终测试
+    with torch.no_grad():
+        test_preds = model(X_test).argmax(dim=1)
+        final_acc = (test_preds == y_test).float().mean()
+    print(f"\n最终测试准确率: {final_acc:.1%}")
+
+
+#示例预测
+def predict_example(model):
+    new_data = torch.randn(3, 5)  # 3个随机五维向量
+    with torch.no_grad():
+        logits = model(new_data)
+        probs = torch.softmax(logits, dim=1)
+        preds = probs.argmax(dim=1)
+
+    print("\n示例预测:")
+    for i in range(3):
+        print(f"样本{i + 1}:")
+        print(f"  向量: {new_data[i].numpy().round(4)}")
+        print(f"  预测类别: dim {preds[i].item()} (概率: {probs[i, preds[i]]:.2f})")
+        print(f"  实际最大值在: dim {new_data[i].argmax().item()}")
+
+
+#主程序
+if __name__ == "__main__":
+    # 训练和评估
+    train_and_evaluate()
+
+    # 重新初始化模型用于演示预测
+    demo_model = VectorClassifier()
+    predict_example(demo_model)
